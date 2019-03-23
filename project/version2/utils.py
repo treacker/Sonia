@@ -226,3 +226,34 @@ def _network_output_to_midi(windows,
     # Add the cello instrument to the PrettyMIDI object
     midi.instruments.append(instrument)
     return midi
+
+
+def generate(model, seeds, window_size, length, num_to_gen, instrument_name):
+
+    # generate a pretty midi file from a model using a seed
+    def _gen(model, seed, window_size, length):
+
+        generated = []
+
+        buf = np.copy(seed).tolist()
+        while len(generated) < length:
+            arr = np.expand_dims(np.asarray(buf), 0)
+            pred = model.predict(arr)
+
+            # prob distrobuition sampling
+            index = np.random.choice(range(0, seed.shape[1]), p=pred[0])
+            pred = np.zeros(seed.shape[1])
+
+            pred[index] = 1
+            generated.append(pred)
+            buf.pop(0)
+            buf.append(pred)
+
+        return generated
+
+    midi = []
+    for i in range(0, num_to_gen):
+        seed = seeds[random.randint(0, len(seeds) - 1)]
+        gen = _gen(model, seed, window_size, length)
+        midi.append(_network_output_to_midi(gen, instrument_name))
+    return midi

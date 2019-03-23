@@ -12,35 +12,6 @@ from midi2audio import FluidSynth
 
 
 
-def generate(model, seeds, window_size, length, num_to_gen, instrument_name):
-
-    # generate a pretty midi file from a model using a seed
-    def _gen(model, seed, window_size, length):
-
-        generated = []
-
-        buf = np.copy(seed).tolist()
-        while len(generated) < length:
-            arr = np.expand_dims(np.asarray(buf), 0)
-            pred = model.predict(arr)
-
-            # prob distrobuition sampling
-            index = np.random.choice(range(0, seed.shape[1]), p=pred[0])
-            pred = np.zeros(seed.shape[1])
-
-            pred[index] = 1
-            generated.append(pred)
-            buf.pop(0)
-            buf.append(pred)
-
-        return generated
-
-    midi = []
-    for i in range(0, num_to_gen):
-        seed = seeds[random.randint(0, len(seeds) - 1)]
-        gen = _gen(model, seed, window_size, length)
-        midi.append(_network_output_to_midi(gen, instrument_name))
-    return midi
 
 
 
@@ -62,11 +33,23 @@ length = 100 # number of events
 number = 10 # number of samples
 instrument = 'Acoustic Grand Piano'  # full list is here https://www.midi.org/specifications/item/gm-level-1-sound-set
 
-model = load_model('v3.hdf5') # here should be path to model
+
+print('enter window size')
+window = int(input())
+print('enter lenght of sample')
+length = int(input())
+print('enter number of samples')
+number = int(input())
+print('enter instrument (for example Acoustic Grand Audio)')
+instrument = input()
+
+
+model = load_model('v5.hdf5') # here should be path to model
 
 
 X, y = next(seed_generator)
-generated = generate(model, X, window,
+print(X)
+generated = utils.generate(model, X, window,
                       length, number, instrument)
 
 if not os.path.isdir('output'):
@@ -75,6 +58,6 @@ if not os.path.isdir('output'):
 for i, midi in enumerate(generated):
     file = os.path.join('output', '{}.mid'.format(i + 1))
     midi.write(file.format(i + 1))
-    fs = FluidSynth('filename') # here should be full path to .sf2 file
+    fs = FluidSynth('FluidR3Mono_GM.sf3') # here should be full path to Sound Font file
     fs.midi_to_audio(file.format(i + 1), os.path.join('output', '{}.wav'.format(i + 1)))
 
