@@ -1,5 +1,3 @@
-
-  
 from keras.models import load_model
 import os, argparse, time
 import pretty_midi
@@ -9,11 +7,6 @@ import random
 import keras
 import utils
 from midi2audio import FluidSynth
-
-
-
-
-
 
 
 midi_files = [os.path.join("vivaldi", path)
@@ -26,8 +19,8 @@ print('enter seed (1-50)')
 seed = int(input())
 
 seed_generator = utils.get_data_generator(midi_files,
-                                              window_size=seed,
-                                              batch_size=50,
+                                              window_size=50,
+                                              batch_size=1,
                                               num_threads=1,
                                               max_files_in_ram=10)
 
