@@ -15,7 +15,7 @@ midi_files = [os.path.join("vivaldi", path)
 
 # generate 10 tracks using random seeds
 
-print('enter seed (1-50)')
+print('enter seed (1-50)')  
 seed = int(input())
 
 seed_generator = utils.get_data_generator(midi_files,
@@ -36,7 +36,7 @@ print('enter lenght of sample')
 length = int(input())
 print('enter number of samples')
 number = int(input())
-print('enter instrument (for example Acoustic Grand Audio)')
+print('enter instrument (for example Acoustic Grand Piano)')
 instrument = input()
 
 
