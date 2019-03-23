@@ -57,10 +57,10 @@ seed_generator = utils.get_data_generator(midi_files,
                                               num_threads=1,
                                               max_files_in_ram=10)
 
-window = 50
-length = 100
-number = 10
-instrument = 'Acoustic Grand Piano'
+window = 50 # length of window
+length = 100 # number of events
+number = 10 # number of samples
+instrument = 'Acoustic Grand Piano'  # full list is here https://www.midi.org/specifications/item/gm-level-1-sound-set
 
 model = load_model('v3.hdf5') # here should be path to model
 
