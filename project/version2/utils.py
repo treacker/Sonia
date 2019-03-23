@@ -1,4 +1,3 @@
-
 import os, argparse, time
 from keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, TensorBoard
 
@@ -30,12 +29,9 @@ def get_percent_monophonic(pm_instrument_roll):
     notes = np.sum(mask, axis=1)
     n = np.count_nonzero(notes)
     single = np.count_nonzero(notes == 1)
-    if single > 0:
-        return float(single) / float(n)
-    elif single == 0 and n > 0:
-        return 0.0
-    else:  # no notes of any kind
-        return 0.0
+    
+    return float(single) / float(n)
+
 
 
 def filter_monophonic(pm_instruments, percent_monophonic=0.99):
@@ -46,10 +42,9 @@ def filter_monophonic(pm_instruments, percent_monophonic=0.99):
 # one-hot encode a sliding window of notes from a pretty midi instrument.
 # This approach uses the piano roll method, where each step in the sliding
 # window represents a constant unit of time (fs=4, or 1 sec / 4 = 250ms).
-# This allows us to encode rests.
-# expects pm_instrument to be monophonic.
+
 def _encode_sliding_windows(pm_instrument, window_size):
-    roll = np.copy(pm_instrument.get_piano_roll(fs=6).T)
+    roll = np.copy(pm_instrument.get_piano_roll(fs=5).T)
 
     # trim beginning silence
     summed = np.sum(roll, axis=1)
@@ -58,11 +53,6 @@ def _encode_sliding_windows(pm_instrument, window_size):
 
     # transform note velocities into 1s
     roll = (roll > 0).astype(float)
-
-    # calculate the percentage of the events that are rests
-    # s = np.sum(roll, axis=1)
-    # num_silence = len(np.where(s == 0)[0])
-    # print('{}/{} {:.2f} events are rests'.format(num_silence, len(roll), float(num_silence)/float(len(roll))))
 
     # append a feature: 1 to rests and 0 to notes
     rests = np.sum(roll, axis=1)
@@ -173,28 +163,66 @@ def get_data_generator(midi_paths,
 
     while True:
         load_files = midi_paths[load_index:load_index + max_files_in_ram]
-        # print('length of load files: {}'.format(len(load_files)))
+
         load_index = (load_index + max_files_in_ram) % len(midi_paths)
 
-        # print('loading large batch: {}'.format(max_files_in_ram))
-        # print('Parsing midi files...')
-        # start_time = time.time()
         if num_threads > 1:
             parsed = pool.map(parse_midi, load_files)
         else:
             parsed = map(parse_midi, load_files)
-        # print('Finished in {:.2f} seconds'.format(time.time() - start_time))
-        # print('parsed, now extracting data')
+
 
         data = _windows_from_monophonic_instruments(parsed, window_size)
 
         batch_index = 0
         while batch_index + batch_size < len(data[0]):
-            # print('getting data...')
-            # print('yielding small batch: {}'.format(batch_size))
+
 
             res = (data[0][batch_index: batch_index + batch_size],
                    data[1][batch_index: batch_index + batch_size])
 
             yield res
             batch_index = batch_index + batch_size
+
+
+# create a pretty midi file with a single instrument using the one-hot encoding
+def _network_output_to_midi(windows,
+                            instrument_name='Acoustic Grand Piano',
+                            allow_represses=True):
+
+    # Create a PrettyMIDI object
+    midi = pretty_midi.PrettyMIDI()
+    # Create an Instrument instance for a cello instrument
+    instrument_program = pretty_midi.instrument_name_to_program(instrument_name)
+    instrument = pretty_midi.Instrument(program=instrument_program)
+
+    cur_note = None # an invalid note to start with
+    cur_note_start = None
+    clock = 0
+
+    for step in windows:
+
+        note_num = np.argmax(step) - 1
+
+        # a note has changed
+        if allow_represses or note_num != cur_note:
+
+            # if a note has been played before and it wasn't a rest
+            if cur_note is not None and cur_note >= 0:
+                # add the last note, now that we have its end time
+                note = pretty_midi.Note(velocity=127,
+                                        pitch=int(cur_note),
+                                        start=cur_note_start,
+                                        end=clock)
+                instrument.notes.append(note)
+
+            # update the current note
+            cur_note = note_num
+            cur_note_start = clock
+
+        # update the clock
+        clock = clock + 1.0 / 5
+
+    # Add the cello instrument to the PrettyMIDI object
+    midi.instruments.append(instrument)
+    return midi
