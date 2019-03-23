@@ -22,8 +22,11 @@ midi_files = [os.path.join("vivaldi", path)
 
 # generate 10 tracks using random seeds
 
+print('enter seed (1-50)')
+seed = int(input())
+
 seed_generator = utils.get_data_generator(midi_files,
-                                              window_size=50,
+                                              window_size=seed,
                                               batch_size=50,
                                               num_threads=1,
                                               max_files_in_ram=10)
@@ -48,7 +51,7 @@ model = load_model('v5.hdf5') # here should be path to model
 
 
 X, y = next(seed_generator)
-print(X)
+
 generated = utils.generate(model, X, window,
                       length, number, instrument)
 
